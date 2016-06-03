@@ -37,6 +37,7 @@ import java.util.Map;
  * 
  * @author Ben Yu
  */
+@AndroidIncompatible // lots of failures, possibly some related to bad equals() implementations?
 public class TypeTokenResolutionTest extends TestCase {
 
   private static class Foo<A, B> {
@@ -496,12 +497,12 @@ public class TypeTokenResolutionTest extends TestCase {
   private interface WithFalseRecursiveType<K, V> {
     WithFalseRecursiveType<List<V>, String> keyShouldNotResolveToStringList();
     WithFalseRecursiveType<List<K>, List<V>> shouldNotCauseInfiniteLoop();
-    SubTypeOfWithFalseRecursiveType<List<V>, List<K>> evenSubTypeWorks();
+    SubtypeOfWithFalseRecursiveType<List<V>, List<K>> evenSubtypeWorks();
   }
   
-  private interface SubTypeOfWithFalseRecursiveType<K1, V1>
+  private interface SubtypeOfWithFalseRecursiveType<K1, V1>
       extends WithFalseRecursiveType<List<K1>, List<V1>> {
-    SubTypeOfWithFalseRecursiveType<V1, K1> revertKeyAndValueTypes();
+    SubtypeOfWithFalseRecursiveType<V1, K1> revertKeyAndValueTypes();
   }
   
   public void testFalseRecursiveType_mappingOnTheSameDeclarationNotUsed() {
@@ -522,7 +523,7 @@ public class TypeTokenResolutionTest extends TestCase {
   
   public void testFalseRecursiveType_referenceOfSubtypeDoesNotConfuseMe() {
     Type returnType = genericReturnType(
-        WithFalseRecursiveType.class, "evenSubTypeWorks");
+        WithFalseRecursiveType.class, "evenSubtypeWorks");
     TypeToken<?> keyType = TypeToken.of(returnType)
         .resolveType(WithFalseRecursiveType.class.getTypeParameters()[0]);
     assertEquals("java.util.List<java.util.List<V>>", keyType.getType().toString());
@@ -530,7 +531,7 @@ public class TypeTokenResolutionTest extends TestCase {
   
   public void testFalseRecursiveType_intermediaryTypeMappingDoesNotConfuseMe() {
     Type returnType = genericReturnType(
-        SubTypeOfWithFalseRecursiveType.class, "revertKeyAndValueTypes");
+        SubtypeOfWithFalseRecursiveType.class, "revertKeyAndValueTypes");
     TypeToken<?> keyType = TypeToken.of(returnType)
         .resolveType(WithFalseRecursiveType.class.getTypeParameters()[0]);
     assertEquals("java.util.List<K1>", keyType.getType().toString());

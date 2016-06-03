@@ -19,6 +19,7 @@ package com.google.common.collect;
 import com.google.common.annotations.Beta;
 import com.google.common.annotations.GwtCompatible;
 import com.google.common.base.Objects;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -53,17 +54,17 @@ import javax.annotation.Nullable;
  * @author Kevin Bourrillion
  * @author Jared Levy
  * @author Louis Wasserman
- * @since 2.0 (imported from Google Collections Library)
+ * @since 2.0
  */
 @GwtCompatible
-public abstract class ForwardingMap<K, V> extends ForwardingObject
-    implements Map<K, V> {
-  // TODO(user): identify places where thread safety is actually lost
+public abstract class ForwardingMap<K, V> extends ForwardingObject implements Map<K, V> {
+  // TODO(lowasser): identify places where thread safety is actually lost
 
   /** Constructor for use by subclasses. */
   protected ForwardingMap() {}
 
-  @Override protected abstract Map<K, V> delegate();
+  @Override
+  protected abstract Map<K, V> delegate();
 
   @Override
   public int size() {
@@ -75,6 +76,7 @@ public abstract class ForwardingMap<K, V> extends ForwardingObject
     return delegate().isEmpty();
   }
 
+  @CanIgnoreReturnValue
   @Override
   public V remove(Object object) {
     return delegate().remove(object);
@@ -100,6 +102,7 @@ public abstract class ForwardingMap<K, V> extends ForwardingObject
     return delegate().get(key);
   }
 
+  @CanIgnoreReturnValue
   @Override
   public V put(K key, V value) {
     return delegate().put(key, value);
@@ -125,11 +128,13 @@ public abstract class ForwardingMap<K, V> extends ForwardingObject
     return delegate().entrySet();
   }
 
-  @Override public boolean equals(@Nullable Object object) {
+  @Override
+  public boolean equals(@Nullable Object object) {
     return object == this || delegate().equals(object);
   }
 
-  @Override public int hashCode() {
+  @Override
+  public int hashCode() {
     return delegate().hashCode();
   }
 
@@ -157,7 +162,8 @@ public abstract class ForwardingMap<K, V> extends ForwardingObject
    *
    * @since 7.0
    */
-  @Beta protected V standardRemove(@Nullable Object key) {
+  @Beta
+  protected V standardRemove(@Nullable Object key) {
     Iterator<Entry<K, V>> entryIterator = entrySet().iterator();
     while (entryIterator.hasNext()) {
       Entry<K, V> entry = entryIterator.next();
@@ -208,7 +214,8 @@ public abstract class ForwardingMap<K, V> extends ForwardingObject
    *
    * @since 7.0
    */
-  @Beta protected boolean standardContainsKey(@Nullable Object key) {
+  @Beta
+  protected boolean standardContainsKey(@Nullable Object key) {
     return Maps.containsKeyImpl(this, key);
   }
 

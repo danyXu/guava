@@ -21,7 +21,6 @@ import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.charset.Charset;
 
-import javax.annotation.CheckReturnValue;
 import javax.annotation.Nullable;
 
 /**
@@ -31,7 +30,6 @@ import javax.annotation.Nullable;
  * @since 11.0
  */
 @Beta
-@CheckReturnValue
 public final class Funnels {
   private Funnels() {}
 
@@ -49,7 +47,8 @@ public final class Funnels {
       into.putBytes(from);
     }
 
-    @Override public String toString() {
+    @Override
+    public String toString() {
       return "Funnels.byteArrayFunnel()";
     }
   }
@@ -72,7 +71,8 @@ public final class Funnels {
       into.putUnencodedChars(from);
     }
 
-    @Override public String toString() {
+    @Override
+    public String toString() {
       return "Funnels.unencodedCharsFunnel()";
     }
   }
@@ -98,11 +98,13 @@ public final class Funnels {
       into.putString(from, charset);
     }
 
-    @Override public String toString() {
+    @Override
+    public String toString() {
       return "Funnels.stringFunnel(" + charset.name() + ")";
     }
 
-    @Override public boolean equals(@Nullable Object o) {
+    @Override
+    public boolean equals(@Nullable Object o) {
       if (o instanceof StringCharsetFunnel) {
         StringCharsetFunnel funnel = (StringCharsetFunnel) o;
         return this.charset.equals(funnel.charset);
@@ -110,7 +112,8 @@ public final class Funnels {
       return false;
     }
 
-    @Override public int hashCode() {
+    @Override
+    public int hashCode() {
       return StringCharsetFunnel.class.hashCode() ^ charset.hashCode();
     }
 
@@ -128,7 +131,7 @@ public final class Funnels {
       private Object readResolve() {
         return stringFunnel(Charset.forName(charsetCanonicalName));
       }
-    
+
       private static final long serialVersionUID = 0;
     }
   }
@@ -149,14 +152,15 @@ public final class Funnels {
       into.putInt(from);
     }
 
-    @Override public String toString() {
+    @Override
+    public String toString() {
       return "Funnels.integerFunnel()";
     }
   }
 
   /**
    * Returns a funnel that processes an {@code Iterable} by funneling its elements in iteration
-   * order with the specified funnel.  No separators are added between the elements.
+   * order with the specified funnel. No separators are added between the elements.
    *
    * @since 15.0
    */
@@ -177,11 +181,13 @@ public final class Funnels {
       }
     }
 
-    @Override public String toString() {
+    @Override
+    public String toString() {
       return "Funnels.sequentialFunnel(" + elementFunnel + ")";
     }
 
-    @Override public boolean equals(@Nullable Object o) {
+    @Override
+    public boolean equals(@Nullable Object o) {
       if (o instanceof SequentialFunnel) {
         SequentialFunnel<?> funnel = (SequentialFunnel<?>) o;
         return elementFunnel.equals(funnel.elementFunnel);
@@ -189,65 +195,72 @@ public final class Funnels {
       return false;
     }
 
-    @Override public int hashCode() {
+    @Override
+    public int hashCode() {
       return SequentialFunnel.class.hashCode() ^ elementFunnel.hashCode();
     }
   }
 
   /**
    * Returns a funnel for longs.
-   * 
+   *
    * @since 13.0
    */
   public static Funnel<Long> longFunnel() {
     return LongFunnel.INSTANCE;
   }
-  
+
   private enum LongFunnel implements Funnel<Long> {
     INSTANCE;
-    
+
     public void funnel(Long from, PrimitiveSink into) {
       into.putLong(from);
     }
-    
-    @Override public String toString() {
+
+    @Override
+    public String toString() {
       return "Funnels.longFunnel()";
     }
   }
-  
+
   /**
-   * Wraps a {@code PrimitiveSink} as an {@link OutputStream}, so it is easy to
-   * {@link Funnel#funnel funnel} an object to a {@code PrimitiveSink}
-   * if there is already a way to write the contents of the object to an {@code OutputStream}.  
-   * 
-   * <p>The {@code close} and {@code flush} methods of the returned {@code OutputStream}
-   * do nothing, and no method throws {@code IOException}.
-   * 
+   * Wraps a {@code PrimitiveSink} as an {@link OutputStream}, so it is easy to {@link Funnel#funnel
+   * funnel} an object to a {@code PrimitiveSink} if there is already a way to write the contents of
+   * the object to an {@code OutputStream}.
+   *
+   * <p>The {@code close} and {@code flush} methods of the returned {@code OutputStream} do nothing,
+   * and no method throws {@code IOException}.
+   *
    * @since 13.0
    */
   public static OutputStream asOutputStream(PrimitiveSink sink) {
     return new SinkAsStream(sink);
   }
-  
+
   private static class SinkAsStream extends OutputStream {
     final PrimitiveSink sink;
+
     SinkAsStream(PrimitiveSink sink) {
       this.sink = Preconditions.checkNotNull(sink);
     }
-    
-    @Override public void write(int b) {
+
+    @Override
+    public void write(int b) {
       sink.putByte((byte) b);
     }
 
-    @Override public void write(byte[] bytes) {
+    @Override
+    public void write(byte[] bytes) {
       sink.putBytes(bytes);
     }
 
-    @Override public void write(byte[] bytes, int off, int len) {
+    @Override
+    public void write(byte[] bytes, int off, int len) {
       sink.putBytes(bytes, off, len);
     }
-    
-    @Override public String toString() {
+
+    @Override
+    public String toString() {
       return "Funnels.asOutputStream(" + sink + ")";
     }
   }

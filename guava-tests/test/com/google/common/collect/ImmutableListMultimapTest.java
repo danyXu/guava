@@ -16,14 +16,15 @@
 
 package com.google.common.collect;
 
+import static com.google.common.collect.testing.features.CollectionFeature.KNOWN_ORDER;
+import static com.google.common.collect.testing.features.CollectionFeature.SERIALIZABLE;
+import static com.google.common.collect.testing.features.MapFeature.ALLOWS_ANY_NULL_QUERIES;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.common.annotations.GwtCompatible;
 import com.google.common.annotations.GwtIncompatible;
 import com.google.common.collect.ImmutableListMultimap.Builder;
-import com.google.common.collect.testing.features.CollectionFeature;
 import com.google.common.collect.testing.features.CollectionSize;
-import com.google.common.collect.testing.features.MapFeature;
 import com.google.common.collect.testing.google.ListMultimapTestSuiteBuilder;
 import com.google.common.collect.testing.google.TestStringListMultimapGenerator;
 import com.google.common.collect.testing.google.UnmodifiableCollectionTests;
@@ -64,24 +65,24 @@ public class ImmutableListMultimapTest extends TestCase {
     }
   }
 
-  @GwtIncompatible("suite")
+  @GwtIncompatible // suite
   public static Test suite() {
     TestSuite suite = new TestSuite();
     suite.addTest(ListMultimapTestSuiteBuilder.using(new ImmutableListMultimapGenerator())
       .named("ImmutableListMultimap")
       .withFeatures(
-          MapFeature.ALLOWS_ANY_NULL_QUERIES,
-          CollectionFeature.SERIALIZABLE,
-          CollectionFeature.KNOWN_ORDER,
+          ALLOWS_ANY_NULL_QUERIES,
+          SERIALIZABLE,
+          KNOWN_ORDER,
           CollectionSize.ANY)
       .createTestSuite());
     suite.addTest(ListMultimapTestSuiteBuilder.using(
             new ImmutableListMultimapCopyOfEntriesGenerator())
         .named("ImmutableListMultimap.copyOf[Iterable<Entry>]")
         .withFeatures(
-            MapFeature.ALLOWS_ANY_NULL_QUERIES,
-            CollectionFeature.SERIALIZABLE,
-            CollectionFeature.KNOWN_ORDER,
+            ALLOWS_ANY_NULL_QUERIES,
+            SERIALIZABLE,
+            KNOWN_ORDER,
             CollectionSize.ANY)
         .createTestSuite());
     suite.addTestSuite(ImmutableListMultimapTest.class);
@@ -523,7 +524,7 @@ public class ImmutableListMultimapTest extends TestCase {
     }
   }
 
-  @GwtIncompatible("SerializableTester")
+  @GwtIncompatible // SerializableTester
   public void testSerialization() {
     Multimap<String, Integer> multimap = createMultimap();
     SerializableTester.reserializeAndAssert(multimap);
@@ -539,7 +540,7 @@ public class ImmutableListMultimapTest extends TestCase {
         HashMultiset.create(valuesCopy));
   }
 
-  @GwtIncompatible("SerializableTester")
+  @GwtIncompatible // SerializableTester
   public void testEmptySerialization() {
     Multimap<String, Integer> multimap = ImmutableListMultimap.of();
     assertSame(multimap, SerializableTester.reserialize(multimap));

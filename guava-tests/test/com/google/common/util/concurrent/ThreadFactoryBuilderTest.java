@@ -91,7 +91,7 @@ public class ThreadFactoryBuilderTest extends TestCase {
   }
 
   private static void checkThreadPoolName(Thread thread, int threadId) {
-    assertTrue(thread.getName().matches("^pool-\\d+-thread-" + threadId + "$"));
+    assertThat(thread.getName()).matches("^pool-\\d+-thread-" + threadId + "$");
   }
 
   public void testNameFormatWithPercentS_custom() {
@@ -164,8 +164,9 @@ public class ThreadFactoryBuilderTest extends TestCase {
   }
 
   public void testBuildTwice() {
-    builder.build();  // this is allowed
-    builder.build();  // this is *also* allowed
+    ThreadFactory unused;
+    unused = builder.build();  // this is allowed
+    unused = builder.build();  // this is *also* allowed
   }
 
   public void testBuildMutate() {

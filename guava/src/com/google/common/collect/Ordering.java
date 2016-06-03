@@ -22,6 +22,7 @@ import static com.google.common.collect.CollectPreconditions.checkNonnegative;
 import com.google.common.annotations.GwtCompatible;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,22 +42,30 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.annotation.Nullable;
 
 /**
- * A comparator, with additional methods to support common operations. This is
- * an "enriched" version of {@code Comparator}, in the same sense that {@link
- * FluentIterable} is an enriched {@link Iterable}.
+ * A comparator, with additional methods to support common operations. This is an "enriched"
+ * version of {@code Comparator}, in the same sense that {@link FluentIterable} is an enriched
+ * {@link Iterable}.
+ *
+ * <h3>Three types of methods</h3>
+ *
+ * Like other fluent types, there are three types of methods present: methods for <i>acquiring</i>,
+ * <i>chaining</i>, and <i>using</i>.
+ *
+ * <h4>Acquiring</h4>
  *
  * <p>The common ways to get an instance of {@code Ordering} are:
  *
  * <ul>
- * <li>Subclass it and implement {@link #compare} instead of implementing
- *     {@link Comparator} directly
- * <li>Pass a <i>pre-existing</i> {@link Comparator} instance to {@link
- *     #from(Comparator)}
+ * <li>Subclass it and implement {@link #compare} instead of implementing {@link Comparator}
+ *     directly
+ * <li>Pass a <i>pre-existing</i> {@link Comparator} instance to {@link #from(Comparator)}
  * <li>Use the natural ordering, {@link Ordering#natural}
  * </ul>
  *
- * <p>Then you can use the <i>chaining</i> methods to get an altered version of
- * that {@code Ordering}, including:
+ * <h4>Chaining</h4>
+ *
+ * <p>Then you can use the <i>chaining</i> methods to get an altered version of that {@code
+ * Ordering}, including:
  *
  * <ul>
  * <li>{@link #reverse}
@@ -65,8 +74,10 @@ import javax.annotation.Nullable;
  * <li>{@link #nullsFirst} / {@link #nullsLast}
  * </ul>
  *
- * <p>Finally, use the resulting {@code Ordering} anywhere a {@link Comparator}
- * is required, or use any of its special operations, such as:</p>
+ * <h4>Using</h4>
+ *
+ * <p>Finally, use the resulting {@code Ordering} anywhere a {@link Comparator} is required, or use
+ * any of its special operations, such as:</p>
  *
  * <ul>
  * <li>{@link #immutableSortedCopy}
@@ -74,18 +85,49 @@ import javax.annotation.Nullable;
  * <li>{@link #min} / {@link #max}
  * </ul>
  *
+ * <h3>Understanding complex orderings</h3>
+ *
+ * <p>Complex chained orderings like the following example can be challenging to understand.
+ * <pre>   {@code
+ *
+ *   Ordering<Foo> ordering =
+ *       Ordering.natural()
+ *           .nullsFirst()
+ *           .onResultOf(getBarFunction)
+ *           .nullsLast();}</pre>
+ *
+ * Note that each chaining method returns a new ordering instance which is backed by the previous
+ * instance, but has the chance to act on values <i>before</i> handing off to that backing
+ * instance. As a result, it usually helps to read chained ordering expressions <i>backwards</i>.
+ * For example, when {@code compare} is called on the above ordering:
+ *
+ * <ol>
+ * <li>First, if only one {@code Foo} is null, that null value is treated as <i>greater</i>
+ * <li>Next, non-null {@code Foo} values are passed to {@code getBarFunction} (we will be
+ *     comparing {@code Bar} values from now on)
+ * <li>Next, if only one {@code Bar} is null, that null value is treated as <i>lesser</i>
+ * <li>Finally, natural ordering is used (i.e. the result of {@code Bar.compareTo(Bar)} is
+ *     returned)
+ * </ol>
+ *
+ * <p>Alas, {@link #reverse} is a little different. As you read backwards through a chain and
+ * encounter a call to {@code reverse}, continue working backwards until a result is determined,
+ * and then reverse that result.
+ *
+ * <h3>Additional notes</h3>
+ *
  * <p>Except as noted, the orderings returned by the factory methods of this
  * class are serializable if and only if the provided instances that back them
  * are. For example, if {@code ordering} and {@code function} can themselves be
  * serialized, then {@code ordering.onResultOf(function)} can as well.
  *
  * <p>See the Guava User Guide article on <a href=
- * "http://code.google.com/p/guava-libraries/wiki/OrderingExplained">
+ * "https://github.com/google/guava/wiki/OrderingExplained">
  * {@code Ordering}</a>.
  *
  * @author Jesse Wilson
  * @author Kevin Bourrillion
- * @since 2.0 (imported from Google Collections Library)
+ * @since 2.0
  */
 @GwtCompatible
 public abstract class Ordering<T> implements Comparator<T> {
@@ -132,7 +174,8 @@ public abstract class Ordering<T> implements Comparator<T> {
    * @deprecated no need to use this
    */
   @GwtCompatible(serializable = true)
-  @Deprecated public static <T> Ordering<T> from(Ordering<T> ordering) {
+  @Deprecated
+  public static <T> Ordering<T> from(Ordering<T> ordering) {
     return checkNotNull(ordering);
   }
 
@@ -186,8 +229,7 @@ public abstract class Ordering<T> implements Comparator<T> {
    *     {@link Object#equals(Object)}) are present among the method arguments
    */
   @GwtCompatible(serializable = true)
-  public static <T> Ordering<T> explicit(
-      T leastValue, T... remainingValuesInOrder) {
+  public static <T> Ordering<T> explicit(T leastValue, T... remainingValuesInOrder) {
     return explicit(Lists.asList(leastValue, remainingValuesInOrder));
   }
 
@@ -261,19 +303,24 @@ public abstract class Ordering<T> implements Comparator<T> {
     static final Ordering<Object> ARBITRARY_ORDERING = new ArbitraryOrdering();
   }
 
-  @VisibleForTesting static class ArbitraryOrdering extends Ordering<Object> {
-    @SuppressWarnings("deprecation") // TODO(kevinb): ?
-    private Map<Object, Integer> uids =
-        Platform.tryWeakKeys(new MapMaker()).makeComputingMap(
-            new Function<Object, Integer>() {
-              final AtomicInteger counter = new AtomicInteger(0);
-              @Override
-              public Integer apply(Object from) {
-                return counter.getAndIncrement();
-              }
-            });
+  @VisibleForTesting
+  static class ArbitraryOrdering extends Ordering<Object> {
 
-    @Override public int compare(Object left, Object right) {
+    @SuppressWarnings("deprecation") // TODO(kevinb): ?
+    private final Map<Object, Integer> uids =
+        Platform.tryWeakKeys(new MapMaker())
+            .makeComputingMap(
+                new Function<Object, Integer>() {
+                  final AtomicInteger counter = new AtomicInteger(0);
+
+                  @Override
+                  public Integer apply(Object from) {
+                    return counter.getAndIncrement();
+                  }
+                });
+
+    @Override
+    public int compare(Object left, Object right) {
       if (left == right) {
         return 0;
       } else if (left == null) {
@@ -295,7 +342,8 @@ public abstract class Ordering<T> implements Comparator<T> {
       return result;
     }
 
-    @Override public String toString() {
+    @Override
+    public String toString() {
       return "Ordering.arbitrary()";
     }
 
@@ -385,8 +433,7 @@ public abstract class Ordering<T> implements Comparator<T> {
    * the same component comparators.
    */
   @GwtCompatible(serializable = true)
-  public <U extends T> Ordering<U> compound(
-      Comparator<? super U> secondaryComparator) {
+  public <U extends T> Ordering<U> compound(Comparator<? super U> secondaryComparator) {
     return new CompoundOrdering<U>(this, checkNotNull(secondaryComparator));
   }
 
@@ -406,8 +453,7 @@ public abstract class Ordering<T> implements Comparator<T> {
    * @param comparators the comparators to try in order
    */
   @GwtCompatible(serializable = true)
-  public static <T> Ordering<T> compound(
-      Iterable<? extends Comparator<? super T>> comparators) {
+  public static <T> Ordering<T> compound(Iterable<? extends Comparator<? super T>> comparators) {
     return new CompoundOrdering<T>(comparators);
   }
 
@@ -443,7 +489,9 @@ public abstract class Ordering<T> implements Comparator<T> {
   // Regular instance methods
 
   // Override to add @Nullable
-  @Override public abstract int compare(@Nullable T left, @Nullable T right);
+  @CanIgnoreReturnValue // TODO(kak): Consider removing this
+  @Override
+  public abstract int compare(@Nullable T left, @Nullable T right);
 
   /**
    * Returns the least of the specified values according to this ordering. If
@@ -458,6 +506,7 @@ public abstract class Ordering<T> implements Comparator<T> {
    *
    * @since 11.0
    */
+  @CanIgnoreReturnValue // TODO(kak): Consider removing this
   public <E extends T> E min(Iterator<E> iterator) {
     // let this throw NoSuchElementException as necessary
     E minSoFar = iterator.next();
@@ -478,6 +527,7 @@ public abstract class Ordering<T> implements Comparator<T> {
    * @throws ClassCastException if the parameters are not <i>mutually
    *     comparable</i> under this ordering.
    */
+  @CanIgnoreReturnValue // TODO(kak): Consider removing this
   public <E extends T> E min(Iterable<E> iterable) {
     return min(iterable.iterator());
   }
@@ -495,6 +545,7 @@ public abstract class Ordering<T> implements Comparator<T> {
    * @throws ClassCastException if the parameters are not <i>mutually
    *     comparable</i> under this ordering.
    */
+  @CanIgnoreReturnValue // TODO(kak): Consider removing this
   public <E extends T> E min(@Nullable E a, @Nullable E b) {
     return (compare(a, b) <= 0) ? a : b;
   }
@@ -510,8 +561,8 @@ public abstract class Ordering<T> implements Comparator<T> {
    * @throws ClassCastException if the parameters are not <i>mutually
    *     comparable</i> under this ordering.
    */
-  public <E extends T> E min(
-      @Nullable E a, @Nullable E b, @Nullable E c, E... rest) {
+  @CanIgnoreReturnValue // TODO(kak): Consider removing this
+  public <E extends T> E min(@Nullable E a, @Nullable E b, @Nullable E c, E... rest) {
     E minSoFar = min(min(a, b), c);
 
     for (E r : rest) {
@@ -534,6 +585,7 @@ public abstract class Ordering<T> implements Comparator<T> {
    *
    * @since 11.0
    */
+  @CanIgnoreReturnValue // TODO(kak): Consider removing this
   public <E extends T> E max(Iterator<E> iterator) {
     // let this throw NoSuchElementException as necessary
     E maxSoFar = iterator.next();
@@ -554,6 +606,7 @@ public abstract class Ordering<T> implements Comparator<T> {
    * @throws ClassCastException if the parameters are not <i>mutually
    *     comparable</i> under this ordering.
    */
+  @CanIgnoreReturnValue // TODO(kak): Consider removing this
   public <E extends T> E max(Iterable<E> iterable) {
     return max(iterable.iterator());
   }
@@ -571,6 +624,7 @@ public abstract class Ordering<T> implements Comparator<T> {
    * @throws ClassCastException if the parameters are not <i>mutually
    *     comparable</i> under this ordering.
    */
+  @CanIgnoreReturnValue // TODO(kak): Consider removing this
   public <E extends T> E max(@Nullable E a, @Nullable E b) {
     return (compare(a, b) >= 0) ? a : b;
   }
@@ -586,8 +640,8 @@ public abstract class Ordering<T> implements Comparator<T> {
    * @throws ClassCastException if the parameters are not <i>mutually
    *     comparable</i> under this ordering.
    */
-  public <E extends T> E max(
-      @Nullable E a, @Nullable E b, @Nullable E c, E... rest) {
+  @CanIgnoreReturnValue // TODO(kak): Consider removing this
+  public <E extends T> E max(@Nullable E a, @Nullable E b, @Nullable E c, E... rest) {
     E maxSoFar = max(max(a, b), c);
 
     for (E r : rest) {
@@ -660,99 +714,11 @@ public abstract class Ordering<T> implements Comparator<T> {
       }
       list.trimToSize();
       return Collections.unmodifiableList(list);
+    } else {
+      TopKSelector<E> selector = TopKSelector.least(k, this);
+      selector.offerAll(elements);
+      return selector.topK();
     }
-
-    /*
-     * Our goal is an O(n) algorithm using only one pass and O(k) additional
-     * memory.
-     *
-     * We use the following algorithm: maintain a buffer of size 2*k. Every time
-     * the buffer gets full, find the median and partition around it, keeping
-     * only the lowest k elements.  This requires n/k find-median-and-partition
-     * steps, each of which take O(k) time with a traditional quickselect.
-     *
-     * After sorting the output, the whole algorithm is O(n + k log k). It
-     * degrades gracefully for worst-case input (descending order), performs
-     * competitively or wins outright for randomly ordered input, and doesn't
-     * require the whole collection to fit into memory.
-     */
-    int bufferCap = k * 2;
-    @SuppressWarnings("unchecked") // we'll only put E's in
-    E[] buffer = (E[]) new Object[bufferCap];
-    E threshold = elements.next();
-    buffer[0] = threshold;
-    int bufferSize = 1;
-    // threshold is the kth smallest element seen so far.  Once bufferSize >= k,
-    // anything larger than threshold can be ignored immediately.
-
-    while (bufferSize < k && elements.hasNext()) {
-      E e = elements.next();
-      buffer[bufferSize++] = e;
-      threshold = max(threshold, e);
-    }
-
-    while (elements.hasNext()) {
-      E e = elements.next();
-      if (compare(e, threshold) >= 0) {
-        continue;
-      }
-
-      buffer[bufferSize++] = e;
-      if (bufferSize == bufferCap) {
-        // We apply the quickselect algorithm to partition about the median,
-        // and then ignore the last k elements.
-        int left = 0;
-        int right = bufferCap - 1;
-
-        int minThresholdPosition = 0;
-        // The leftmost position at which the greatest of the k lower elements
-        // -- the new value of threshold -- might be found.
-
-        while (left < right) {
-          int pivotIndex = (left + right + 1) >>> 1;
-          int pivotNewIndex = partition(buffer, left, right, pivotIndex);
-          if (pivotNewIndex > k) {
-            right = pivotNewIndex - 1;
-          } else if (pivotNewIndex < k) {
-            left = Math.max(pivotNewIndex, left + 1);
-            minThresholdPosition = pivotNewIndex;
-          } else {
-            break;
-          }
-        }
-        bufferSize = k;
-
-        threshold = buffer[minThresholdPosition];
-        for (int i = minThresholdPosition + 1; i < bufferSize; i++) {
-          threshold = max(threshold, buffer[i]);
-        }
-      }
-    }
-
-    Arrays.sort(buffer, 0, bufferSize, this);
-
-    bufferSize = Math.min(bufferSize, k);
-    return Collections.unmodifiableList(
-        Arrays.asList(ObjectArrays.arraysCopyOf(buffer, bufferSize)));
-    // We can't use ImmutableList; we have to be null-friendly!
-  }
-
-  private <E extends T> int partition(
-      E[] values, int left, int right, int pivotIndex) {
-    E pivotValue = values[pivotIndex];
-
-    values[pivotIndex] = values[right];
-    values[right] = pivotValue;
-
-    int storeIndex = left;
-    for (int i = left; i < right; i++) {
-      if (compare(values[i], pivotValue) < 0) {
-        ObjectArrays.swap(values, storeIndex, i);
-        storeIndex++;
-      }
-    }
-    ObjectArrays.swap(values, right, storeIndex);
-    return storeIndex;
   }
 
   /**
@@ -811,6 +777,7 @@ public abstract class Ordering<T> implements Comparator<T> {
    * performs better than copying the list and calling {@link
    * Collections#sort(List)}.
    */
+  @CanIgnoreReturnValue // TODO(kak): Consider removing this
   public <E extends T> List<E> sortedCopy(Iterable<E> elements) {
     @SuppressWarnings("unchecked") // does not escape, and contains only E's
     E[] array = (E[]) Iterables.toArray(elements);
@@ -836,8 +803,8 @@ public abstract class Ordering<T> implements Comparator<T> {
    *     elements} itself) is null
    * @since 3.0
    */
-  public <E extends T> ImmutableList<E> immutableSortedCopy(
-      Iterable<E> elements) {
+  @CanIgnoreReturnValue // TODO(kak): Consider removing this
+  public <E extends T> ImmutableList<E> immutableSortedCopy(Iterable<E> elements) {
     @SuppressWarnings("unchecked") // we'll only ever have E's in here
     E[] array = (E[]) Iterables.toArray(elements);
     for (E e : array) {
@@ -896,7 +863,10 @@ public abstract class Ordering<T> implements Comparator<T> {
    *
    * @param sortedList the list to be searched
    * @param key the key to be searched for
+   * @deprecated Use {@link Collections#binarySearch(List, Object, Comparator)} directly. This
+   * method is scheduled for deletion in June 2018.
    */
+  @Deprecated
   public int binarySearch(List<? extends T> sortedList, @Nullable T key) {
     return Collections.binarySearch(sortedList, key, this);
   }

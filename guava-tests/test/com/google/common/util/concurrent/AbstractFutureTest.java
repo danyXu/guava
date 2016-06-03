@@ -93,7 +93,8 @@ public class AbstractFutureTest extends TestCase {
       future.get();
       fail("Expected CancellationException");
     } catch (CancellationException e) {
-      assertNotNull(e.getCause());
+      // See AbstractFutureCancellationCauseTest for how to set causes
+      assertNull(e.getCause());
     }
   }
 
@@ -108,7 +109,8 @@ public class AbstractFutureTest extends TestCase {
       future.get();
       fail("Expected CancellationException");
     } catch (CancellationException e) {
-      assertNotNull(e.getCause());
+      // See AbstractFutureCancellationCauseTest for how to set causes
+      assertNull(e.getCause());
     }
   }
 
@@ -247,6 +249,7 @@ public class AbstractFutureTest extends TestCase {
    * He did the bash, it caught on in a flash
    * He did the bash, he did the future bash
    */
+
   public void testFutureBash() {
     final CyclicBarrier barrier = new CyclicBarrier(
         6  // for the setter threads
@@ -441,7 +444,7 @@ public class AbstractFutureTest extends TestCase {
         } catch (ExecutionException e) {
           finalResults.add(e.getCause());
         } catch (CancellationException e) {
-          finalResults.add(e.getCause());
+          finalResults.add(CancellationException.class);
         } finally {
           awaitUnchecked(barrier);
         }
@@ -459,7 +462,7 @@ public class AbstractFutureTest extends TestCase {
             finalResults.add(e.getCause());
             break;
           } catch (CancellationException e) {
-            finalResults.add(e.getCause());
+            finalResults.add(CancellationException.class);
             break;
           } catch (TimeoutException e) {
             // loop
@@ -501,7 +504,7 @@ public class AbstractFutureTest extends TestCase {
       // inspect state and ensure it is correct!
       // asserts that all get calling threads received the same value
       Object result = Iterables.getOnlyElement(finalResults);
-      if (result instanceof CancellationException) {
+      if (result == CancellationException.class) {
         assertTrue(future.isCancelled());
         assertTrue(cancellationSucess.get());
         // cancellation can interleave in 3 ways
@@ -564,7 +567,7 @@ public class AbstractFutureTest extends TestCase {
         } catch (ExecutionException e) {
           finalResults.add(e.getCause());
         } catch (CancellationException e) {
-          finalResults.add(e.getCause());
+          finalResults.add(CancellationException.class);
         } finally {
           awaitUnchecked(barrier);
         }
@@ -587,7 +590,7 @@ public class AbstractFutureTest extends TestCase {
       // inspect state and ensure it is correct!
       // asserts that all get calling threads received the same value
       Object result = Iterables.getOnlyElement(finalResults);
-      if (result instanceof CancellationException) {
+      if (result == CancellationException.class) {
         assertTrue(future.isCancelled());
         assertTrue(cancellationSucess.get());
         assertFalse(setFutureSuccess.get());
@@ -603,9 +606,9 @@ public class AbstractFutureTest extends TestCase {
     executor.shutdown();
   }
 
-  private int awaitUnchecked(final CyclicBarrier barrier) {
+  private static void awaitUnchecked(final CyclicBarrier barrier) {
     try {
-      return barrier.await();
+      barrier.await();
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
@@ -653,10 +656,10 @@ public class AbstractFutureTest extends TestCase {
     return null;
   }
 
-  private final class WaiterThread extends Thread {
-    private final AbstractFuture<String> future;
+  private static final class WaiterThread extends Thread {
+    private final AbstractFuture<?> future;
 
-    private WaiterThread(AbstractFuture<String> future) {
+    private WaiterThread(AbstractFuture<?> future) {
       this.future = future;
     }
 
@@ -678,11 +681,40 @@ public class AbstractFutureTest extends TestCase {
     }
   }
 
+  static final class TimedWaiterThread extends Thread {
+    private final AbstractFuture<?> future;
+    private final long timeout;
+    private final TimeUnit unit;
+
+    TimedWaiterThread(AbstractFuture<?> future, long timeout, TimeUnit unit) {
+      this.future = future;
+      this.timeout = timeout;
+      this.unit = unit;
+    }
+
+    @Override public void run() {
+      try {
+        future.get(timeout, unit);
+      } catch (Exception e) {
+        // nothing
+      }
+    }
+
+    void awaitWaiting() {
+      while (LockSupport.getBlocker(this) != future) {
+        if (getState() == State.TERMINATED) {
+          throw new RuntimeException("Thread exited");
+        }
+        Thread.yield();
+      }
+    }
+  }
+
   private final class PollingThread extends Thread {
-    private final AbstractFuture<String> future;
+    private final AbstractFuture<?> future;
     private final CountDownLatch completedIteration = new CountDownLatch(10);
 
-    private PollingThread(AbstractFuture<String> future) {
+    private PollingThread(AbstractFuture<?> future) {
       this.future = future;
     }
 

@@ -21,6 +21,7 @@ import static com.google.common.base.Predicates.not;
 import static com.google.common.testing.AbstractPackageSanityTests.Chopper.suffix;
 
 import com.google.common.annotations.Beta;
+import com.google.common.annotations.GwtIncompatible;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
 import com.google.common.base.Predicate;
@@ -33,6 +34,7 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 import com.google.common.reflect.ClassPath;
 import com.google.common.testing.NullPointerTester.Visibility;
+import com.google.j2objc.annotations.J2ObjCIncompatible;
 
 import junit.framework.AssertionFailedError;
 import junit.framework.TestCase;
@@ -98,6 +100,9 @@ import java.util.logging.Logger;
  */
 @Beta
 // TODO: Switch to JUnit 4 and use @Parameterized and @BeforeClass
+// Note: @Test annotations are deliberate, as some subclasses specify @RunWith(JUnit4).
+@GwtIncompatible
+@J2ObjCIncompatible // com.google.common.reflect.ClassPath
 public abstract class AbstractPackageSanityTests extends TestCase {
 
   /**

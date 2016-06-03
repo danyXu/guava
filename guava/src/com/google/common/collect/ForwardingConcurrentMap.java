@@ -17,6 +17,7 @@
 package com.google.common.collect;
 
 import com.google.common.annotations.GwtCompatible;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 
 import java.util.concurrent.ConcurrentMap;
 
@@ -27,7 +28,7 @@ import java.util.concurrent.ConcurrentMap;
  * href="http://en.wikipedia.org/wiki/Decorator_pattern">decorator pattern</a>.
  *
  * @author Charles Fry
- * @since 2.0 (imported from Google Collections Library)
+ * @since 2.0
  */
 @GwtCompatible
 public abstract class ForwardingConcurrentMap<K, V> extends ForwardingMap<K, V>
@@ -36,26 +37,30 @@ public abstract class ForwardingConcurrentMap<K, V> extends ForwardingMap<K, V>
   /** Constructor for use by subclasses. */
   protected ForwardingConcurrentMap() {}
 
-  @Override protected abstract ConcurrentMap<K, V> delegate();
+  @Override
+  protected abstract ConcurrentMap<K, V> delegate();
 
+  @CanIgnoreReturnValue
   @Override
   public V putIfAbsent(K key, V value) {
     return delegate().putIfAbsent(key, value);
   }
 
+  @CanIgnoreReturnValue
   @Override
   public boolean remove(Object key, Object value) {
     return delegate().remove(key, value);
   }
 
+  @CanIgnoreReturnValue
   @Override
   public V replace(K key, V value) {
     return delegate().replace(key, value);
   }
 
+  @CanIgnoreReturnValue
   @Override
   public boolean replace(K key, V oldValue, V newValue) {
     return delegate().replace(key, oldValue, newValue);
   }
-
 }

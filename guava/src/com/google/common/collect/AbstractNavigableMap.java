@@ -16,6 +16,7 @@
 
 package com.google.common.collect;
 
+import com.google.common.annotations.GwtIncompatible;
 import com.google.common.collect.Maps.IteratorBasedAbstractMap;
 
 import java.util.Iterator;
@@ -29,16 +30,17 @@ import javax.annotation.Nullable;
 
 /**
  * Skeletal implementation of {@link NavigableMap}.
- * 
+ *
  * @author Louis Wasserman
  */
-abstract class AbstractNavigableMap<K, V> extends IteratorBasedAbstractMap<K, V> 
+@GwtIncompatible
+abstract class AbstractNavigableMap<K, V> extends IteratorBasedAbstractMap<K, V>
     implements NavigableMap<K, V> {
 
   @Override
   @Nullable
   public abstract V get(@Nullable Object key);
-  
+
   @Override
   @Nullable
   public Entry<K, V> firstEntry() {
@@ -163,7 +165,7 @@ abstract class AbstractNavigableMap<K, V> extends IteratorBasedAbstractMap<K, V>
   public NavigableMap<K, V> descendingMap() {
     return new DescendingMap();
   }
-  
+
   private final class DescendingMap extends Maps.DescendingMap<K, V> {
     @Override
     NavigableMap<K, V> forward() {
@@ -175,5 +177,4 @@ abstract class AbstractNavigableMap<K, V> extends IteratorBasedAbstractMap<K, V>
       return descendingEntryIterator();
     }
   }
-
 }

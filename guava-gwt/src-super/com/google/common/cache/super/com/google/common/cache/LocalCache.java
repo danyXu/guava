@@ -94,7 +94,7 @@ public class LocalCache<K, V> implements ConcurrentMap<K, V> {
   
   @Override
   public V get(Object key) {
-    key = checkNotNull(key);
+    checkNotNull(key);
     Timestamped<V> value = cachingHashMap.get(key);
 
     if (value == null) {
@@ -115,8 +115,8 @@ public class LocalCache<K, V> implements ConcurrentMap<K, V> {
 
   @Override
   public V put(K key, V value) {
-    key = checkNotNull(key);
-    value = checkNotNull(value);
+    checkNotNull(key);
+    checkNotNull(value);
     Timestamped<V> oldValue = cachingHashMap.put(key, new Timestamped<V>(value, ticker));
     if (oldValue == null) {
       return null;
@@ -238,7 +238,7 @@ public class LocalCache<K, V> implements ConcurrentMap<K, V> {
   
   private void alertListenerIfPresent(Object key, Object value, RemovalCause cause) {
     if (removalListener != null) {
-      removalListener.onRemoval(new RemovalNotification(key, value, cause));
+      removalListener.onRemoval(RemovalNotification.create(key, value, cause));
     }
   }
 
@@ -278,7 +278,7 @@ public class LocalCache<K, V> implements ConcurrentMap<K, V> {
   }
   
   private V getIfPresent(Object key) {
-    key = checkNotNull(key);
+    checkNotNull(key);
     Timestamped<V> value = cachingHashMap.get(key);
 
     if (value == null) {
@@ -388,7 +388,7 @@ public class LocalCache<K, V> implements ConcurrentMap<K, V> {
 
     @Override
     public void invalidate(Object key) {
-      key = checkNotNull(key);
+      checkNotNull(key);
       localCache.remove(key);
     }
 
@@ -488,7 +488,7 @@ public class LocalCache<K, V> implements ConcurrentMap<K, V> {
     protected boolean removeEldestEntry(Map.Entry<K, Timestamped<V>> ignored) {
       boolean removal = (maximumSize == UNSET_INT) ? false : (size() > maximumSize);
       if ((removalListener != null) && removal) {
-        removalListener.onRemoval(new RemovalNotification(
+        removalListener.onRemoval(RemovalNotification.create(
             ignored.getKey(), 
             ignored.getValue().getValue(),
             RemovalCause.SIZE));
@@ -708,9 +708,6 @@ public class LocalCache<K, V> implements ConcurrentMap<K, V> {
       throw new UnsupportedOperationException();
     }
 
-    /**
-     * Returns a string representation of the form <code>{key}={value}</code>.
-     */
     @Override 
     public String toString() {
       return getKey() + "=" + getValue();

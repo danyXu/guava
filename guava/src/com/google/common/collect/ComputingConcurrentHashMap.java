@@ -17,10 +17,10 @@ package com.google.common.collect;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 
+import com.google.common.annotations.GwtIncompatible;
 import com.google.common.base.Equivalence;
 import com.google.common.base.Function;
-import com.google.common.collect.MapMaker.RemovalCause;
-import com.google.common.collect.MapMaker.RemovalListener;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -39,6 +39,7 @@ import javax.annotation.concurrent.GuardedBy;
  * @author Bob Lee
  * @author Charles Fry
  */
+@GwtIncompatible
 class ComputingConcurrentHashMap<K, V> extends MapMakerInternalMap<K, V> {
   final Function<? super K, ? extends V> computingFunction;
 
@@ -46,8 +47,7 @@ class ComputingConcurrentHashMap<K, V> extends MapMakerInternalMap<K, V> {
    * Creates a new, empty map with the specified strategy, initial capacity, load factor and
    * concurrency level.
    */
-  ComputingConcurrentHashMap(MapMaker builder,
-      Function<? super K, ? extends V> computingFunction) {
+  ComputingConcurrentHashMap(MapMaker builder, Function<? super K, ? extends V> computingFunction) {
     super(builder);
     this.computingFunction = checkNotNull(computingFunction);
   }
@@ -62,6 +62,7 @@ class ComputingConcurrentHashMap<K, V> extends MapMakerInternalMap<K, V> {
     return (ComputingSegment<K, V>) super.segmentFor(hash);
   }
 
+  @CanIgnoreReturnValue
   V getOrCompute(K key) throws ExecutionException {
     int hash = hash(checkNotNull(key));
     return segmentFor(hash).getOrCompute(key, hash, computingFunction);
@@ -76,13 +77,13 @@ class ComputingConcurrentHashMap<K, V> extends MapMakerInternalMap<K, V> {
     V getOrCompute(K key, int hash, Function<? super K, ? extends V> computingFunction)
         throws ExecutionException {
       try {
-        outer: while (true) {
+        outer:
+        while (true) {
           // don't call getLiveEntry, which would ignore computing values
           ReferenceEntry<K, V> e = getEntry(key, hash);
           if (e != null) {
             V value = getLiveValue(e);
             if (value != null) {
-              recordRead(e);
               return value;
             }
           }
@@ -103,27 +104,18 @@ class ComputingConcurrentHashMap<K, V> extends MapMakerInternalMap<K, V> {
 
               for (e = first; e != null; e = e.getNext()) {
                 K entryKey = e.getKey();
-                if (e.getHash() == hash && entryKey != null
+                if (e.getHash() == hash
+                    && entryKey != null
                     && map.keyEquivalence.equivalent(key, entryKey)) {
                   ValueReference<K, V> valueReference = e.getValueReference();
                   if (valueReference.isComputingReference()) {
                     createNewEntry = false;
                   } else {
                     V value = e.getValueReference().get();
-                    if (value == null) {
-                      enqueueNotification(entryKey, hash, value, RemovalCause.COLLECTED);
-                    } else if (map.expires() && map.isExpired(e)) {
-                      // This is a duplicate check, as preWriteCleanup already purged expired
-                      // entries, but let's accomodate an incorrect expiration queue.
-                      enqueueNotification(entryKey, hash, value, RemovalCause.EXPIRED);
-                    } else {
-                      recordLockedRead(e);
+                    if (value != null) {
                       return value;
                     }
 
-                    // immediately reuse invalid entries
-                    evictionQueue.remove(e);
-                    expirationQueue.remove(e);
                     this.count = newCount; // write-volatile
                   }
                   break;
@@ -143,7 +135,6 @@ class ComputingConcurrentHashMap<K, V> extends MapMakerInternalMap<K, V> {
               }
             } finally {
               unlock();
-              postWriteCleanup();
             }
 
             if (createNewEntry) {
@@ -157,7 +148,6 @@ class ComputingConcurrentHashMap<K, V> extends MapMakerInternalMap<K, V> {
           // don't consider expiration as we're concurrent with computation
           V value = e.getValueReference().waitForValue();
           if (value != null) {
-            recordRead(e);
             return value;
           }
           // else computing thread will clearValue
@@ -168,33 +158,26 @@ class ComputingConcurrentHashMap<K, V> extends MapMakerInternalMap<K, V> {
       }
     }
 
-    V compute(K key, int hash, ReferenceEntry<K, V> e,
+    V compute(
+        K key,
+        int hash,
+        ReferenceEntry<K, V> e,
         ComputingValueReference<K, V> computingValueReference)
         throws ExecutionException {
       V value = null;
-      long start = System.nanoTime();
-      long end = 0;
       try {
         // Synchronizes on the entry to allow failing fast when a recursive computation is
         // detected. This is not fool-proof since the entry may be copied when the segment
         // is written to.
         synchronized (e) {
           value = computingValueReference.compute(key, hash);
-          end = System.nanoTime();
         }
         if (value != null) {
           // putIfAbsent
-          V oldValue = put(key, hash, value, true);
-          if (oldValue != null) {
-            // the computed value was already clobbered
-            enqueueNotification(key, hash, value, RemovalCause.REPLACED);
-          }
+          V unused = put(key, hash, value, true);
         }
         return value;
       } finally {
-        if (end == 0) {
-          end = System.nanoTime();
-        }
         if (value == null) {
           clearValue(key, hash, computingValueReference);
         }
@@ -379,22 +362,35 @@ class ComputingConcurrentHashMap<K, V> extends MapMakerInternalMap<K, V> {
 
   @Override
   Object writeReplace() {
-    return new ComputingSerializationProxy<K, V>(keyStrength, valueStrength, keyEquivalence,
-        valueEquivalence, expireAfterWriteNanos, expireAfterAccessNanos, maximumSize,
-        concurrencyLevel, removalListener, this, computingFunction);
+    return new ComputingSerializationProxy<K, V>(
+        keyStrength,
+        valueStrength,
+        keyEquivalence,
+        valueEquivalence,
+        concurrencyLevel,
+        this,
+        computingFunction);
   }
 
   static final class ComputingSerializationProxy<K, V> extends AbstractSerializationProxy<K, V> {
 
     final Function<? super K, ? extends V> computingFunction;
 
-    ComputingSerializationProxy(Strength keyStrength, Strength valueStrength,
-        Equivalence<Object> keyEquivalence, Equivalence<Object> valueEquivalence,
-        long expireAfterWriteNanos, long expireAfterAccessNanos, int maximumSize,
-        int concurrencyLevel, RemovalListener<? super K, ? super V> removalListener,
-        ConcurrentMap<K, V> delegate, Function<? super K, ? extends V> computingFunction) {
-      super(keyStrength, valueStrength, keyEquivalence, valueEquivalence, expireAfterWriteNanos,
-          expireAfterAccessNanos, maximumSize, concurrencyLevel, removalListener, delegate);
+    ComputingSerializationProxy(
+        Strength keyStrength,
+        Strength valueStrength,
+        Equivalence<Object> keyEquivalence,
+        Equivalence<Object> valueEquivalence,
+        int concurrencyLevel,
+        ConcurrentMap<K, V> delegate,
+        Function<? super K, ? extends V> computingFunction) {
+      super(
+          keyStrength,
+          valueStrength,
+          keyEquivalence,
+          valueEquivalence,
+          concurrencyLevel,
+          delegate);
       this.computingFunction = computingFunction;
     }
 

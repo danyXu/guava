@@ -18,6 +18,7 @@ package com.google.common.testing;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+import com.google.common.annotations.GwtIncompatible;
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Charsets;
 import com.google.common.base.Equivalence;
@@ -127,6 +128,7 @@ import javax.annotation.Nullable;
  *
  * @author Ben Yu
  */
+@GwtIncompatible
 class FreshValueGenerator {
 
   private static final ImmutableMap<Class<?>, Method> GENERATORS;
@@ -141,7 +143,7 @@ class FreshValueGenerator {
     GENERATORS = builder.build();
   }
 
-  private static final ImmutableMap<Class<?>, Method> EMPTY_GENEREATORS;
+  private static final ImmutableMap<Class<?>, Method> EMPTY_GENERATORS;
   static {
     ImmutableMap.Builder<Class<?>, Method> builder =
         ImmutableMap.builder();
@@ -150,7 +152,7 @@ class FreshValueGenerator {
         builder.put(method.getReturnType(), method);
       }
     }
-    EMPTY_GENEREATORS = builder.build();
+    EMPTY_GENERATORS = builder.build();
   }
 
   private final AtomicInteger freshness = new AtomicInteger(1);
@@ -213,7 +215,7 @@ class FreshValueGenerator {
       Array.set(array, 0, generate(componentType));
       return array;
     }
-    Method emptyGenerate = EMPTY_GENEREATORS.get(rawType);
+    Method emptyGenerate = EMPTY_GENERATORS.get(rawType);
     if (emptyGenerate != null) {
       if (emptyInstanceGenerated.containsKey(type.getType())) {
         // empty instance already generated
@@ -306,9 +308,7 @@ class FreshValueGenerator {
   }
 
   /** Subclasses can override to provide different return value for proxied interface methods. */
-  Object interfaceMethodCalled(
-      @SuppressWarnings("unused") Class<?> interfaceType,
-      @SuppressWarnings("unused") Method method) {
+  Object interfaceMethodCalled(Class<?> interfaceType, Method method) {
     throw new UnsupportedOperationException();
   }
 

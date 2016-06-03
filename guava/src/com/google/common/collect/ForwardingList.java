@@ -18,6 +18,7 @@ package com.google.common.collect;
 
 import com.google.common.annotations.Beta;
 import com.google.common.annotations.GwtCompatible;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -49,23 +50,24 @@ import javax.annotation.Nullable;
  *
  * @author Mike Bostock
  * @author Louis Wasserman
- * @since 2.0 (imported from Google Collections Library)
+ * @since 2.0
  */
 @GwtCompatible
-public abstract class ForwardingList<E> extends ForwardingCollection<E>
-    implements List<E> {
-  // TODO(user): identify places where thread safety is actually lost
+public abstract class ForwardingList<E> extends ForwardingCollection<E> implements List<E> {
+  // TODO(lowasser): identify places where thread safety is actually lost
 
   /** Constructor for use by subclasses. */
   protected ForwardingList() {}
 
-  @Override protected abstract List<E> delegate();
+  @Override
+  protected abstract List<E> delegate();
 
   @Override
   public void add(int index, E element) {
     delegate().add(index, element);
   }
 
+  @CanIgnoreReturnValue
   @Override
   public boolean addAll(int index, Collection<? extends E> elements) {
     return delegate().addAll(index, elements);
@@ -96,11 +98,13 @@ public abstract class ForwardingList<E> extends ForwardingCollection<E>
     return delegate().listIterator(index);
   }
 
+  @CanIgnoreReturnValue
   @Override
   public E remove(int index) {
     return delegate().remove(index);
   }
 
+  @CanIgnoreReturnValue
   @Override
   public E set(int index, E element) {
     return delegate().set(index, element);
@@ -111,11 +115,13 @@ public abstract class ForwardingList<E> extends ForwardingCollection<E>
     return delegate().subList(fromIndex, toIndex);
   }
 
-  @Override public boolean equals(@Nullable Object object) {
+  @Override
+  public boolean equals(@Nullable Object object) {
     return object == this || delegate().equals(object);
   }
 
-  @Override public int hashCode() {
+  @Override
+  public int hashCode() {
     return delegate().hashCode();
   }
 
@@ -140,8 +146,7 @@ public abstract class ForwardingList<E> extends ForwardingCollection<E>
    *
    * @since 7.0
    */
-  protected boolean standardAddAll(
-      int index, Iterable<? extends E> elements) {
+  protected boolean standardAddAll(int index, Iterable<? extends E> elements) {
     return Lists.addAllImpl(this, index, elements);
   }
 
@@ -200,7 +205,8 @@ public abstract class ForwardingList<E> extends ForwardingCollection<E>
    *
    * @since 7.0
    */
-  @Beta protected ListIterator<E> standardListIterator(int start) {
+  @Beta
+  protected ListIterator<E> standardListIterator(int start) {
     return Lists.listIteratorImpl(this, start);
   }
 
@@ -211,7 +217,8 @@ public abstract class ForwardingList<E> extends ForwardingCollection<E>
    *
    * @since 7.0
    */
-  @Beta protected List<E> standardSubList(int fromIndex, int toIndex) {
+  @Beta
+  protected List<E> standardSubList(int fromIndex, int toIndex) {
     return Lists.subListImpl(this, fromIndex, toIndex);
   }
 
@@ -222,7 +229,8 @@ public abstract class ForwardingList<E> extends ForwardingCollection<E>
    *
    * @since 7.0
    */
-  @Beta protected boolean standardEquals(@Nullable Object object) {
+  @Beta
+  protected boolean standardEquals(@Nullable Object object) {
     return Lists.equalsImpl(this, object);
   }
 
@@ -233,7 +241,8 @@ public abstract class ForwardingList<E> extends ForwardingCollection<E>
    *
    * @since 7.0
    */
-  @Beta protected int standardHashCode() {
+  @Beta
+  protected int standardHashCode() {
     return Lists.hashCodeImpl(this);
   }
 }
